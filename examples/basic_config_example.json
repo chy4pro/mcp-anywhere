@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "type": "stdio"
+    },
+    "commands": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-commands"],
+      "type": "stdio"
+    }
+  }
+} 
