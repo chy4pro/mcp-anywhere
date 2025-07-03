@@ -1,4 +1,4 @@
-import EventSource from 'eventsource';
+// EventSource will be imported dynamically
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
@@ -465,27 +465,37 @@ class StandaloneMCPClient {
 
   private async connectToRelay() {
     const sseUrl = `${this.relayServerUrl}/client/${this.clientId}/sse`;
-    console.log('📡 Connecting to Relay Server SSE:', sseUrl);
+    console.log('📡 Attempting to connect to Relay Server SSE:', sseUrl);
+    
+    try {
+      const { EventSource: EventSourceClass } = require('eventsource');
+      this.eventSource = new EventSourceClass(sseUrl);
 
-    this.eventSource = new EventSource(sseUrl);
+      if (this.eventSource) {
+        this.eventSource.onopen = () => {
+          console.log('✅ SSE connection established');
+        };
 
-    this.eventSource.onopen = () => {
-      console.log('✅ SSE connection established');
-    };
+        this.eventSource.onmessage = (event: any) => {
+          try {
+            const data = JSON.parse(event.data);
+            this.handleRelayMessage(data);
+          } catch (error) {
+            console.error('❌ Failed to parse SSE message:', error);
+          }
+        };
 
-    this.eventSource.onmessage = (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.handleRelayMessage(data);
-      } catch (error) {
-        console.error('❌ Failed to parse SSE message:', error);
+        this.eventSource.onerror = (error: any) => {
+          console.error('❌ SSE connection error:', error);
+          setTimeout(() => this.reconnect(), 5000);
+        };
+        
+        console.log('✅ SSE connection attempt completed');
       }
-    };
-
-    this.eventSource.onerror = (error: any) => {
-      console.error('❌ SSE connection error:', error);
-      setTimeout(() => this.reconnect(), 5000);
-    };
+    } catch (error) {
+      console.error('⚠️ SSE connection failed, but client is still operational:', error);
+      console.log('🔧 Client will continue running and can receive tool calls via HTTP endpoints');
+    }
   }
 
   private async handleRelayMessage(message: types.MCPRequest | types.MCPNotification) {
